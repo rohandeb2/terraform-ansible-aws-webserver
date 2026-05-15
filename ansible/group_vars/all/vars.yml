@@ -1,0 +1,4 @@
+---
+project_name: "devops-training"
+nginx_worker_connections: 1024
+app_port: 80

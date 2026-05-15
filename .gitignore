@@ -1,0 +1,11 @@
+vault_pass.txt
+*.vault_pass.txt
+.vault_pass.txt
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+bootstrap/.terraform/
+bootstrap/.terraform.lock.hcl
+bootstrap/terraform.tfstate
+bootstrap/terraform.tfstate.backup
+deployment_guide1.txt
+*.txt

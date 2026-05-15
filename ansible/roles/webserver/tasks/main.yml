@@ -1,0 +1,77 @@
+---
+- name: Update all packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+  notify: restart nginx
+
+- name: Install NGINX and dependencies
+  ansible.builtin.dnf:
+    name:
+      - nginx
+      - python3
+    state: present
+
+- name: Deploy NGINX config
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "nginx -t -c %s"
+    backup: yes
+  notify: reload nginx
+
+- name: Create app config directory
+  ansible.builtin.file:
+    path: /etc/app
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: "0750"
+
+- name: Deploy app config with vault secrets
+  ansible.builtin.template:
+    src: app.env.j2
+    dest: /etc/app/.env
+    owner: nginx
+    group: nginx
+    mode: "0640"
+
+- name: Deploy index page
+  ansible.builtin.copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head><title>{{ project_name }} — {{ ansible_ec2_tags.Environment | default('unknown') }}</title></head>
+      <body>
+        <h1>✅ Deployed by Terraform + Ansible</h1>
+        <p>Instance ID: {{ ansible_ec2_instance_id | default('local') }}</p>
+        <p>Environment: {{ ansible_ec2_tags.Environment | default('unknown') }}</p>
+        <p>AZ: {{ ansible_ec2_placement.availability_zone | default('unknown') }}</p>
+      </body>
+      </html>
+    dest: /usr/share/nginx/html/index.html
+    mode: "0644"
+
+- name: Deploy health check endpoint
+  ansible.builtin.copy:
+    content: "healthy\n"
+    dest: /usr/share/nginx/html/health
+    mode: "0644"
+
+- name: Start and enable NGINX
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Wait for NGINX health check to pass
+  ansible.builtin.uri:
+    url: "http://localhost/health"
+    status_code: 200
+  retries: 5
+  delay: 3
+  register: health_result
+  until: health_result.status == 200
