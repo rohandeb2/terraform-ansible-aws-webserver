@@ -6,7 +6,7 @@ Production-grade AWS web infrastructure provisioned with Terraform and configure
 
 ## Architecture
 
-![Architecture Diagram](img/1.png)
+![Architecture Diagram](img/11.png)
 
 ---
 
