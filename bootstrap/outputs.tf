@@ -1,5 +1,3 @@
-# These outputs tell you exactly what to paste into terraform/backend.tf
-
 output "state_bucket_name" {
   description = "Paste this into terraform/backend.tf as 'bucket'"
   value       = aws_s3_bucket.terraform_state.id
