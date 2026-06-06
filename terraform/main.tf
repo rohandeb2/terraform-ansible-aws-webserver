@@ -14,7 +14,7 @@ provider "aws" {
   default_tags {
     tags = {
       Project     = var.project_name
-      Environment = terraform.workspace   # workspace name auto-tags everything
+      Environment = terraform.workspace  
       ManagedBy   = "Terraform"
     }
   }
@@ -24,8 +24,6 @@ locals {
   env = terraform.workspace   # "dev", "staging", or "prod"
   name_prefix = "${var.project_name}-${local.env}"
 }
-
-# ─── DATA SOURCES ──────────────────────────────────────────────
 
 data "aws_ami" "amazon_linux" {
   most_recent = true
@@ -46,8 +44,6 @@ data "aws_subnets" "public" {
     values = [data.aws_vpc.default.id]
   }
 }
-
-# ─── SECURITY GROUPS ───────────────────────────────────────────
 
 resource "aws_security_group" "alb_sg" {
   name        = "${local.name_prefix}-alb-sg"
@@ -83,7 +79,6 @@ resource "aws_security_group" "web_sg" {
   description = "EC2 instances - only accepts traffic from ALB, not the internet"
   vpc_id      = data.aws_vpc.default.id
 
-  # CRITICAL: only ALB can talk to EC2 — not the open internet
   ingress {
     description     = "HTTP from ALB only"
     from_port       = 80
@@ -108,8 +103,6 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# ─── APPLICATION LOAD BALANCER ─────────────────────────────────
-
 resource "aws_lb" "web_alb" {
   name               = "${local.name_prefix}-alb"
   internal           = false
@@ -128,7 +121,7 @@ resource "aws_lb_target_group" "web_tg" {
 
   health_check {
     enabled             = true
-    path                = "/health"    # This is your NGINX /health endpoint
+    path                = "/health"    
     healthy_threshold   = 2
     unhealthy_threshold = 3
     timeout             = 5
@@ -147,10 +140,6 @@ resource "aws_lb_listener" "web_listener" {
     target_group_arn = aws_lb_target_group.web_tg.arn
   }
 }
-
-# ─── LAUNCH TEMPLATE ───────────────────────────────────────────
-# Launch template replaces launch configuration — it's the modern way
-
 resource "aws_launch_template" "web_lt" {
   name_prefix   = "${local.name_prefix}-lt-"
   image_id      = data.aws_ami.amazon_linux.id
@@ -173,8 +162,6 @@ resource "aws_launch_template" "web_lt" {
     }
   }
 
-  # User data runs when instance first boots
-  # It installs NGINX so the health check passes before Ansible runs
   user_data = base64encode(<<-EOF
     #!/bin/bash
     dnf install -y nginx
@@ -197,8 +184,6 @@ resource "aws_launch_template" "web_lt" {
     create_before_destroy = true   # Zero-downtime replacement of instances
   }
 }
-
-# ─── AUTO SCALING GROUP ────────────────────────────────────────
 
 resource "aws_autoscaling_group" "web_asg" {
   name                = "${local.name_prefix}-asg"
@@ -228,9 +213,6 @@ resource "aws_autoscaling_group" "web_asg" {
   }
 }
 
-# ─── AUTO SCALING POLICY ───────────────────────────────────────
-# Scale up when average CPU > 70%, scale down when < 30%
-
 resource "aws_autoscaling_policy" "scale_up" {
   name                   = "${local.name_prefix}-scale-up"
   autoscaling_group_name = aws_autoscaling_group.web_asg.name
@@ -243,8 +225,6 @@ resource "aws_autoscaling_policy" "scale_up" {
     target_value = 70.0
   }
 }
-
-# ─── CLOUDWATCH ALARM ──────────────────────────────────────────
 
 resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   alarm_name          = "${local.name_prefix}-high-cpu"
