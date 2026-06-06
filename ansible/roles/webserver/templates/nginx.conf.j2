@@ -1,13 +1,11 @@
-# nginx.conf — managed by Ansible, do not edit manually
-# Generated for: {{ inventory_hostname }} | Env: {{ ansible_ec2_tags.Environment | default('dev') }}
 user nginx;
-worker_processes auto;           # auto = one worker per CPU core
+worker_processes auto;           
 error_log /var/log/nginx/error.log warn;
 pid /run/nginx.pid;
 
 events {
     worker_connections 1024;
-    use epoll;                   # Best for Linux
+    use epoll;                  
     multi_accept on;
 }
 
@@ -15,7 +13,7 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
-    # Structured log format — easy to parse with log tools
+
     log_format main '$remote_addr - $remote_user [$time_local] "$request" '
                     '$status $body_bytes_sent "$http_referer" '
                     '"$http_user_agent"';
@@ -27,17 +25,17 @@ http {
     tcp_nodelay     on;
     keepalive_timeout 65;
 
-    # Security headers — important in production
+
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options "nosniff";
     add_header X-XSS-Protection "1; mode=block";
 
-    # Hide NGINX version from attackers
+  
     server_tokens off;
 
     server {
         listen 80;
-        server_name _;           # Accept any hostname
+        server_name _;         
 
         root /usr/share/nginx/html;
         index index.html;
@@ -46,7 +44,7 @@ http {
             try_files $uri $uri/ =404;
         }
 
-        # Health check endpoint — used by load balancers
+
         location /health {
             access_log off;
             return 200 "healthy\n";
