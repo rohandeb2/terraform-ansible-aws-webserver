@@ -13,8 +13,6 @@ variable "project_name" {
 variable "state_bucket_name" {
   description = "Globally unique S3 bucket name for Terraform state"
   type        = string
-  # Must be globally unique across all AWS accounts — add your account ID or initials
-  # Example: "devops-training-tfstate-123456789012"
 }
 
 variable "dynamodb_table_name" {
