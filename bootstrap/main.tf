@@ -7,10 +7,6 @@ terraform {
       version = "~> 5.0"
     }
   }
-
-  # Bootstrap uses LOCAL state intentionally
-  # This file is small, has no secrets, and IS committed to git
-  # It is the one exception to the "never commit state" rule
   backend "local" {
     path = "terraform.tfstate"
   }
@@ -27,21 +23,13 @@ provider "aws" {
     }
   }
 }
-
-# ─── S3 BUCKET ─────────────────────────────────────────────────────────────────
-# This is the bucket that stores state for your MAIN terraform project
-
 resource "aws_s3_bucket" "terraform_state" {
   bucket = var.state_bucket_name
-
-  # Prevent accidental deletion of your state bucket
-  # terraform destroy will FAIL until you manually set this to false
 #   lifecycle {
 #     prevent_destroy = true
 #   }
 }
 
-# Block ALL public access — state files contain sensitive infrastructure data
 resource "aws_s3_bucket_public_access_block" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -51,7 +39,6 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
   restrict_public_buckets = true
 }
 
-# Enable versioning — lets you recover from accidental state corruption
 resource "aws_s3_bucket_versioning" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -60,7 +47,6 @@ resource "aws_s3_bucket_versioning" "terraform_state" {
   }
 }
 
-# Encrypt all state files at rest with AES-256
 resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -68,15 +54,13 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
-    bucket_key_enabled = true   # reduces encryption request costs
+    bucket_key_enabled = true   
   }
 }
 
-# Enforce HTTPS only — reject all HTTP requests to this bucket
+
 resource "aws_s3_bucket_policy" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
-
-  # Must wait for public access block to be applied first
   depends_on = [aws_s3_bucket_public_access_block.terraform_state]
 
   policy = jsonencode({
@@ -101,7 +85,6 @@ resource "aws_s3_bucket_policy" "terraform_state" {
   })
 }
 
-# Transition old state versions to cheaper storage after 90 days
 resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -111,29 +94,25 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
     filter {}
     noncurrent_version_transition {
       noncurrent_days = 90
-      storage_class   = "STANDARD_IA"   # cheaper for infrequently accessed versions
+      storage_class   = "STANDARD_IA"   
     }
 
     noncurrent_version_expiration {
-      noncurrent_days = 365             # delete versions older than 1 year
+      noncurrent_days = 365            
     }
   }
 }
 
-# ─── DYNAMODB TABLE ────────────────────────────────────────────────────────────
-# One row is written per active terraform apply — prevents concurrent runs
-
 resource "aws_dynamodb_table" "terraform_state_lock" {
   name         = var.dynamodb_table_name
-  billing_mode = "PAY_PER_REQUEST"   # no capacity planning needed — usage is very low
+  billing_mode = "PAY_PER_REQUEST"  
   hash_key     = "LockID"
 
   attribute {
     name = "LockID"
-    type = "S"   # String — Terraform writes values like "bucket/key.tfstate-md5"
+    type = "S"   
   }
 
-  # Protect lock table from accidental deletion just like the bucket
 #   lifecycle {
 #     prevent_destroy = true
 #   }
