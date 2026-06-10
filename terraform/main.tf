@@ -21,7 +21,7 @@ provider "aws" {
 }
 
 locals {
-  env = terraform.workspace   # "dev", "staging", or "prod"
+  env = terraform.workspace  
   name_prefix = "${var.project_name}-${local.env}"
 }
 
@@ -176,12 +176,12 @@ resource "aws_launch_template" "web_lt" {
     tags = {
       Name        = "${local.name_prefix}-web"
       Environment = local.env
-      Role        = "webserver"          # Ansible uses this tag for dynamic inventory
+      Role        = "webserver"         
     }
   }
 
   lifecycle {
-    create_before_destroy = true   # Zero-downtime replacement of instances
+    create_before_destroy = true   
   }
 }
 
@@ -192,7 +192,7 @@ resource "aws_autoscaling_group" "web_asg" {
   max_size            = var.asg_max
   vpc_zone_identifier = data.aws_subnets.public.ids
   target_group_arns   = [aws_lb_target_group.web_tg.arn]
-  health_check_type   = "ELB"    # Use ALB health check, not just EC2 ping
+  health_check_type   = "ELB"   
 
   launch_template {
     id      = aws_launch_template.web_lt.id
@@ -202,7 +202,7 @@ resource "aws_autoscaling_group" "web_asg" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      min_healthy_percentage = 50   # Never take down more than 50% at once
+      min_healthy_percentage = 50  
     }
   }
 
